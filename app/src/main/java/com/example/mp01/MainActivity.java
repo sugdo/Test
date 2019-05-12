@@ -98,14 +98,22 @@ public class MainActivity extends AppCompatActivity {
                 /*
                 * 리스트 형태 : 잘 나오긴 하는데, 가끔 터짐. 왠지 한글쓸때 잘 터지는것 같은데 다시 실행해 보면 잘 될때가 있음.
                 * */
+                Elements titles= doc.select("div.info_price em.num" );
+                for(Element e: titles){
+                    System.out.println("title: " + e.text());
+                    HTMLContentInStringFormat += e.text().trim() + "\n";
+                }
+
 
                 //span.lowest em.price_num(확실치 않음)
                 /*
                 * 리스트 형태 말고 갤러리 형태로 나오는 아이템들은 값이 안 나옴. parsing할 태그를 바꿔야할듯.
                 * */
-                Elements titles= doc.select("div.info_price em.num" );
+                titles= doc.select("em.price_num" );
+                String lowest;
                 for(Element e: titles){
-                    System.out.println("title: " + e.text());
+                    Log.d("tag","\ne : "+e);
+                    e.toString();
                     HTMLContentInStringFormat += e.text().trim() + "\n";
                 }
 
