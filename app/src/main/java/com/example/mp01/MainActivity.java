@@ -41,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
     String HTMLPageURL ="https://search.naver.com/search.naver?query=";
     private String HTMLContentInStringFormat="";
     PendingIntent intent;
-
+    String subOutput="";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,37 +86,58 @@ public class MainActivity extends AppCompatActivity {
             Log.d("tag","JsoupAsyncTask.doInBackground()");
             debug.setText("JsoupAsyncTask.doInBackground()");
             try{
+                int price;
+                int lowPrice=99999999;
+                String sample="";
+                String sub="";
                 String userQuery = input.getText().toString();
                 HTMLPageURL+=userQuery;
                 Log.d("tag","JsoupAsyncTask.doInBackground()-HTMLPageURL(modified) : "+HTMLPageURL);
                 //이곳에 debug.setText(HTMLPageURL) 넣으면 펑! 하고 터져버림
 
                 Document doc = Jsoup.connect(HTMLPageURL).get();
-                Log.d("tag","JsoupAsyncTask.doInBackground()-doc : "+doc);
 
-                //div.info_price em.num
-                /*
-                * 리스트 형태 : 잘 나오긴 하는데, 가끔 터짐. 왠지 한글쓸때 잘 터지는것 같은데 다시 실행해 보면 잘 될때가 있음.
-                * */
+                //여기가 리스트뷰
                 Elements titles= doc.select("div.info_price em.num" );
+                Elements subItems = doc.select("ul.product_list li.product_item div.info");
+                Log.d("tag","subItems : "+subItems);
                 for(Element e: titles){
-                    System.out.println("title: " + e.text());
-                    HTMLContentInStringFormat += e.text().trim() + "\n";
+                    sample = e.text();
+                    sample = sample.replaceAll("\\,","");
+                    price = Integer.parseInt(sample);
+                    lowPrice = price;
                 }
+                int subCount=0;
+                for(Element e : subItems){
+                    if(subCount<5) {
+                        subCount++;
+                    }
+                    else {
+                        sub = e.text();
+                        subOutput= subOutput+sub + "\n";
+                    }
+                }
+                Log.d("tag",subOutput);
 
 
-                //span.lowest em.price_num(확실치 않음)
-                /*
-                * 리스트 형태 말고 갤러리 형태로 나오는 아이템들은 값이 안 나옴. parsing할 태그를 바꿔야할듯.
-                * */
+                //여기가 갤러리뷰
                 titles= doc.select("em.price_num" );
-                String lowest;
                 for(Element e: titles){
-                    Log.d("tag","\ne : "+e);
-                    e.toString();
-                    HTMLContentInStringFormat += e.text().trim() + "\n";
+                    sample=e.text();
+                    if (sample.startsWith("최저")){
+                        int index = sample.indexOf("저");
+                        sample = sample.substring(index+1,sample.length());
+                        index = sample.indexOf("원");
+                        sample = sample.substring(0,index);
+                        sample = sample.replaceAll("\\,","");
+                    }
+                    price = Integer.parseInt(sample);
+                    if(price<lowPrice){
+                        lowPrice=price;
+                    }
                 }
-
+                Log.d("tag","검색어 : "+userQuery+"\n최솟값 : "+lowPrice);
+                HTMLContentInStringFormat = userQuery +"/"+Integer.toString(lowPrice);
             }catch(IOException e){
                 e.printStackTrace();
             }
@@ -126,9 +147,10 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected  void onPostExecute(Void result){
             Log.d("tag","JsoupAsyncTask.onPostExecute()");
-            webParsingOutput.setText(HTMLContentInStringFormat);
+            webParsingOutput.setText(HTMLContentInStringFormat+"\n\n"+subOutput);
             HTMLPageURL = "https://search.naver.com/search.naver?query=";
             HTMLContentInStringFormat = "";
+            subOutput="";
             Log.d("tag","JsoupAsyncTask.onPostExecute()-HTMLPageURL : "+HTMLPageURL);
         }
     }
