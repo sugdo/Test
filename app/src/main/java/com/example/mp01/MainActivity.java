@@ -45,7 +45,6 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d("tag","onCreate()");
         //XML Inflation
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -57,7 +56,6 @@ public class MainActivity extends AppCompatActivity {
         debug =findViewById(R.id.debug);
 
         //debugUI
-        Log.d("tag","현재 HTMLPageURL:"+HTMLPageURL);
         debug.setText("onCreate()");
 
         webParsingOutput.setMovementMethod(new ScrollingMovementMethod());
@@ -65,7 +63,6 @@ public class MainActivity extends AppCompatActivity {
         webParsing.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d("tag","webParsing.onClick()");
                 debug.setText("webParsing.onClick()");
                 JsoupAsyncTask jsoupAsyncTask = new JsoupAsyncTask();
                 jsoupAsyncTask.execute();
@@ -76,14 +73,12 @@ public class MainActivity extends AppCompatActivity {
     private class JsoupAsyncTask extends AsyncTask<Void,Void,Void>{
         @Override
         protected void onPreExecute(){
-            Log.d("tag","JsoupAsyncTask.onPreExecute()");
             debug.setText("JsoupAsyncTask.onPreExecute()");
             super.onPreExecute();
         }
 
         @Override
         protected Void doInBackground(Void... params){
-            Log.d("tag","JsoupAsyncTask.doInBackground()");
             debug.setText("JsoupAsyncTask.doInBackground()");
             try{
                 int price;
@@ -100,7 +95,6 @@ public class MainActivity extends AppCompatActivity {
                 //여기가 리스트뷰
                 Elements titles= doc.select("div.info_price em.num" );
                 Elements subItems = doc.select("ul.product_list li.product_item div.info");
-                Log.d("tag","subItems : "+subItems);
                 for(Element e: titles){
                     sample = e.text();
                     sample = sample.replaceAll("\\,","");
@@ -117,7 +111,6 @@ public class MainActivity extends AppCompatActivity {
                         subOutput= subOutput+sub + "\n";
                     }
                 }
-                Log.d("tag",subOutput);
 
 
                 //여기가 갤러리뷰
@@ -136,7 +129,6 @@ public class MainActivity extends AppCompatActivity {
                         lowPrice=price;
                     }
                 }
-                Log.d("tag","검색어 : "+userQuery+"\n최솟값 : "+lowPrice);
                 HTMLContentInStringFormat = userQuery +"/"+Integer.toString(lowPrice);
             }catch(IOException e){
                 e.printStackTrace();
@@ -146,12 +138,10 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected  void onPostExecute(Void result){
-            Log.d("tag","JsoupAsyncTask.onPostExecute()");
             webParsingOutput.setText(HTMLContentInStringFormat+"\n\n"+subOutput);
             HTMLPageURL = "https://search.naver.com/search.naver?query=";
             HTMLContentInStringFormat = "";
             subOutput="";
-            Log.d("tag","JsoupAsyncTask.onPostExecute()-HTMLPageURL : "+HTMLPageURL);
         }
     }
 }
