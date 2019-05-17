@@ -30,6 +30,7 @@ import java.io.IOException;
 3. 앱 내의 논리적 에러 개선, 예를 들면 갤럭시버즈를 갈럭시버즈로 썻을 때.
 4. 함께 찾아본 상품, 함께 살만한 상품 출력(오직 갤러리뷰에서만, 리스트뷰에서는 사이트에서 나오지가 않음.)
 5. 그로 인한, UI변경. 함께 찾아본 상품,함께 살만한 상품 View 추가, Debug View제거(대신 Logcat을 이용해주세요.)
+6. Logo변경
  */
 
 public class MainActivity extends AppCompatActivity {
