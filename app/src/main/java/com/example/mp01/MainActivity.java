@@ -32,7 +32,8 @@ import java.io.IOException;
 2. 웹파싱 스레드의 탄생
 3. 두 스레드의 콤비 탄생
 4. 퇴물이 된 웹파싱 버튼
-5. 아이구 좋아라
+5. Firebase 안쓰고 푸시알림
+6. 아이구 아이구 아이구 아이구 좋아라
  */
 
 public class MainActivity extends AppCompatActivity {
@@ -50,6 +51,8 @@ public class MainActivity extends AppCompatActivity {
     String subItemList1="";
     String subItemList2="";
     PendingIntent intent;
+
+    NotificationManager notificationManager;
 
     //2개의 스레드 1개의 핸들러
     timerThread timer;
@@ -81,6 +84,20 @@ public class MainActivity extends AppCompatActivity {
         //시작하자마자 돌아가는 타이머 스레드
         timer.start();
 
+    }
+
+    public void notification(String main){
+        Log.d("tag","notification() : "+main);
+        Notification.Builder builder = new Notification.Builder(this)
+                .setSmallIcon(R.mipmap.circle4white) // 아이콘 설정하지 않으면 오류남
+                .setDefaults(Notification.DEFAULT_ALL)
+                .setContentTitle("제-목") // 제목 설정
+                .setContentText(main) // 내용 설정
+                .setTicker(main) // 상태바에 표시될 한줄 출력
+                .setAutoCancel(true)
+                .setContentIntent(intent);
+        notificationManager = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+        notificationManager.notify(0, builder.build());
     }
 
     private class JsoupAsyncTask extends AsyncTask<Void,Void,Void>{
@@ -213,6 +230,7 @@ public class MainActivity extends AppCompatActivity {
             HTMLContentInStringFormat = "";
             subItemList1="";
             subItemList2="";
+
         }
     }
 
@@ -290,6 +308,7 @@ public class MainActivity extends AppCompatActivity {
             webParsingOutput.setText(main);
             webPasingSubList1.setText(sub1);
             webPasingSubList2.setText(sub2);
+            notification(main);
         }
     }
 }
