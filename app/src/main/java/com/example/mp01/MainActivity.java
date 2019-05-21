@@ -5,6 +5,8 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
@@ -14,6 +16,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 import org.jsoup.Jsoup;
@@ -24,29 +27,34 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 
 /*
-190517 윤승기릿
-1. 이제 한글을 입력해도 런타임 에러가 안 뜸.
-2. 아예 런타임에러가 안 뜸. 대신, 에러가 난 이유를 보여줌.
-3. 앱 내의 논리적 에러 개선, 예를 들면 갤럭시버즈를 갈럭시버즈로 썻을 때.
-4. 함께 찾아본 상품, 함께 살만한 상품 출력(오직 갤러리뷰에서만, 리스트뷰에서는 사이트에서 나오지가 않음.)
-5. 그로 인한, UI변경. 함께 찾아본 상품,함께 살만한 상품 View 추가, Debug View제거(대신 Logcat을 이용해주세요.)
-6. Logo변경
+190521 기릿기릿윤승기릿
+1. 타이머 스레드의 탄생
+2. 웹파싱 스레드의 탄생
+3. 두 스레드의 콤비 탄생
+4. 퇴물이 된 웹파싱 버튼
+5. 아이구 좋아라
  */
 
 public class MainActivity extends AppCompatActivity {
 
     //XML UI 선언
     EditText input;
-    Button webParsing;
+    TextView webParsing;
     TextView webParsingOutput;
     TextView webPasingSubList1;
     TextView webPasingSubList2;
+    EditText timerSettings;
 
     String HTMLPageURL ="https://search.naver.com/search.naver?ie=utf8&query=";
     String HTMLContentInStringFormat="";
     String subItemList1="";
     String subItemList2="";
     PendingIntent intent;
+
+    //2개의 스레드 1개의 핸들러
+    timerThread timer;
+    webParsingThread wt;
+    Handler handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,22 +63,24 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Log.d("tag","onCreate()");
 
+        //스레드와 핸들러 객체 생성
+        wt = new webParsingThread();
+        timer = new timerThread();
+        handler = new handler3();
+
         //UI 끌당
         input = findViewById(R.id.input);
         webParsing = findViewById(R.id.webParsing);
         webParsingOutput = findViewById(R.id.webPasingOutputMain);
         webPasingSubList1 = findViewById(R.id.webPasingSubItemList1);
         webPasingSubList2 = findViewById(R.id.webPasingSubItemList2);
+        timerSettings = findViewById(R.id.timerSettings);
         webParsingOutput.setMovementMethod(new ScrollingMovementMethod());
         intent = PendingIntent.getActivity(this, 0, new Intent(getApplicationContext(), MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
-        webParsing.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.d("tag","onClick()");
-                JsoupAsyncTask jsoupAsyncTask = new JsoupAsyncTask();
-                jsoupAsyncTask.execute();
-            }
-        });
+
+        //시작하자마자 돌아가는 타이머 스레드
+        timer.start();
+
     }
 
     private class JsoupAsyncTask extends AsyncTask<Void,Void,Void>{
@@ -170,9 +180,9 @@ public class MainActivity extends AppCompatActivity {
             //Log메시지가 주석을 대신합니다.
             catch(NumberFormatException e001){
                 Log.d("tag","이 오류는, 갤러리 뷰에서 가격들의 형식이 일괄적이지 않을때 일어납니다. 누구는 최저99,250원 이렇게 나오고 누구는 그냥 890원 이렇게 나올때지요");
-                HTMLContentInStringFormat = "좀 더 구체적인 제품명으로 검색해 주세요";
-                subItemList1="시간과 예산이";
-                subItemList2="부족하다 이 말이야!";
+                HTMLContentInStringFormat = "좀 더 구체적인 제품명으로 검색해 주십시오";
+                subItemList1="그 키워드로는";
+                subItemList2="기준이 명확하지가 않습니다";
             }catch(IOException e002){
                 Log.d("tag","이 오류는, 인터넷 연결이 원활하지 않을때 일어납니다.");
                 HTMLContentInStringFormat = "인터넷 연결이 원활하지 않으면 웹파싱이 어렵습니다.";
@@ -189,15 +199,97 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected  void onPostExecute(Void result){
+            Log.d("tag","onPostExecute()");
             //View에 내용을 전달하여 사용자에게 결과를 보여줍니다.
-            webParsingOutput.setText(HTMLContentInStringFormat);
-            webPasingSubList1.setText(subItemList1);
-            webPasingSubList2.setText(subItemList2);
+            Bundle solveMe = new Bundle();
+            solveMe.putString("main",HTMLContentInStringFormat);
+            solveMe.putString("sub1",subItemList1);
+            solveMe.putString("sub2",subItemList2);
+            Message msg = new Message();
+            msg.setData(solveMe);
+            handler.sendMessage(msg);
             //변수들을 초기화 시킵니다.
             HTMLPageURL = "https://search.naver.com/search.naver?ie=utf8&query=";
             HTMLContentInStringFormat = "";
             subItemList1="";
             subItemList2="";
+        }
+    }
+
+    //예전에 있던 웹파싱 버튼을 클릭햇을때랑 똑같음.
+    public class webParsingThread extends Thread{
+        public void run(){
+            Log.d("tag","WebParsingThread run");
+            JsoupAsyncTask jsoupAsyncTask = new JsoupAsyncTask();
+            jsoupAsyncTask.execute();
+        }
+    }
+
+    public class timerThread extends Thread{
+        //초기값 10초
+        int tempTime=10000;
+
+        public void run(){
+            Log.d("tag","timerThread run");
+            //웹파싱 스레드 만들고
+            wt.start();
+            //두고두고 우려먹기, 절대 죽지 않음.
+            while(true) {
+                try {
+                    Log.d("tag","sleeping...");
+                    try {
+                        tempTime = Integer.parseInt(timerSettings.getText().toString());
+                    }catch(NumberFormatException e){
+                        Log.d("tag","누구인가? "+e.toString()+" 이옵니다 폐하");
+                        Bundle solveMe = new Bundle();
+                        solveMe.putString("main","두유노우 형변환?");
+                        solveMe.putString("sub1","이거는 ms단위로 입력을 해야 돼");
+                        solveMe.putString("sub2","\'숫자\'로!");
+                        Message msg = new Message();
+                        msg.setData(solveMe);
+                        handler.sendMessage(msg);
+                    }
+                    Thread.sleep(tempTime);
+                    //최소 3초의 여유 ㅎ
+                    Thread.sleep(3000);
+                    Log.d("tag","Time to work!");
+                    //예토전생
+                    wt.run();
+                }catch(InterruptedException e){
+                    Log.d("tag","Interrupt 발생!");
+                    Bundle solveMe = new Bundle();
+                    solveMe.putString("main","두유노우 인터럽트?");
+                    solveMe.putString("sub1","내가 운영체제때 배웠는데 말야");
+                    solveMe.putString("sub2","이걸 안드로이드 하면서 볼 줄은 몰랐어");
+                    Message msg = new Message();
+                    msg.setData(solveMe);
+                    handler.sendMessage(msg);
+                }catch(IllegalThreadStateException e){
+                    Log.d("tag",e.toString());
+                    Bundle solveMe = new Bundle();
+                    solveMe.putString("main","스레드의 state가 이상하다는거는");
+                    solveMe.putString("sub1","아직 살아있는 스레드를 다시 start() 할때 발생되지");
+                    solveMe.putString("sub2","고거는 처리를 했는데, 어떻게 이 메시지가 뜨게되는지는 모르겠네");
+                    Message msg = new Message();
+                    msg.setData(solveMe);
+                    handler.sendMessage(msg);
+                }
+            }
+        }
+    }
+
+    //이제 핸들러(메인쓰레드)에서 UI를 바꿔줌 - 굳이 그럴필요는 없지만 안전을 위해!
+    public class handler3 extends Handler{
+        //메시지를 받았음
+        public void handleMessage(Message msg){
+            Log.d("tag","handleMessage()");
+            String main = msg.getData().getString("main");
+            String sub1 = msg.getData().getString("sub1");
+            String sub2 = msg.getData().getString("sub2");
+            //번들을 까서 내용물을 까봄
+            webParsingOutput.setText(main);
+            webPasingSubList1.setText(sub1);
+            webPasingSubList2.setText(sub2);
         }
     }
 }
