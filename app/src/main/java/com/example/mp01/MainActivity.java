@@ -224,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
             jsoupAsyncTask.execute();
         }
     }
-
+//
     public class timerThread extends Thread{
         //초기값 10초
         int tempTime=10000;
