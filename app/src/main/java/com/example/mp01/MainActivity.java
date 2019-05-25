@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Message;
@@ -27,13 +28,10 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 
 /*
-190521 기릿기릿윤승기릿
-1. 타이머 스레드의 탄생
-2. 웹파싱 스레드의 탄생
-3. 두 스레드의 콤비 탄생
-4. 퇴물이 된 웹파싱 버튼
-5. Firebase 안쓰고 푸시알림
-6. 아이구 아이구 아이구 아이구 좋아라
+190525 기릿기릿윤승기릿
+1. SharedPreference 이용, 앱을 껏다 켜도, 폰을 껏다 켜도! 내가 검색한 기록이 고대로 다시 켯을때 반영됩니다.
+2. Web parsing 안정성 개선, 제대로 입력했는데 구체적으로 입력하라는 망언은 하지 않습니다.
+3. 아29 좋아라~
  */
 
 public class MainActivity extends AppCompatActivity {
@@ -53,6 +51,8 @@ public class MainActivity extends AppCompatActivity {
     PendingIntent intent;
 
     NotificationManager notificationManager;
+    SharedPreferences sh_Pref;
+    SharedPreferences.Editor toEdit;
 
     //2개의 스레드 1개의 핸들러
     timerThread timer;
@@ -81,23 +81,81 @@ public class MainActivity extends AppCompatActivity {
         webParsingOutput.setMovementMethod(new ScrollingMovementMethod());
         intent = PendingIntent.getActivity(this, 0, new Intent(getApplicationContext(), MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
 
+        //혹시 예전에 썻던 쿼리가 있으면 써야지
+        applySharedPreference();
+        
         //시작하자마자 돌아가는 타이머 스레드
         timer.start();
 
     }
 
-    public void notification(String main){
-        Log.d("tag","notification() : "+main);
-        Notification.Builder builder = new Notification.Builder(this)
-                .setSmallIcon(R.mipmap.circle4white) // 아이콘 설정하지 않으면 오류남
-                .setDefaults(Notification.DEFAULT_ALL)
-                .setContentTitle("제-목") // 제목 설정
-                .setContentText(main) // 내용 설정
-                .setTicker(main) // 상태바에 표시될 한줄 출력
-                .setAutoCancel(true)
-                .setContentIntent(intent);
-        notificationManager = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
-        notificationManager.notify(0, builder.build());
+    public void applySharedPreference() {
+        sh_Pref = getSharedPreferences("Previous query", MODE_PRIVATE);
+        if(sh_Pref!=null && sh_Pref.contains("storedQuery")){
+            String storedQuery = sh_Pref.getString("storedQuery","이주형 교수님 짱");
+            input.setText(storedQuery);
+        }
+    }
+
+    public class timerThread extends Thread{
+        //초기값 10초
+        int tempTime=10000;
+        public void run(){
+            Log.d("tag","timerThread run");
+            //웹파싱 스레드 만들고
+            wt.start();
+            //두고두고 우려먹기, 절대 죽지 않음.
+            while(true) {
+                try {
+                    Log.d("tag","sleeping...");
+                    try {
+                        tempTime = Integer.parseInt(timerSettings.getText().toString());
+                    }catch(NumberFormatException e){
+                        Log.d("tag","누구인가? "+e.toString()+" 이옵니다 폐하");
+                        Bundle solveMe = new Bundle();
+                        solveMe.putString("main","두유노우 형변환?");
+                        solveMe.putString("sub1","이거는 ms단위로 입력을 해야 돼");
+                        solveMe.putString("sub2","\'숫자\'로!");
+                        Message msg = new Message();
+                        msg.setData(solveMe);
+                        handler.sendMessage(msg);
+                    }
+                    Thread.sleep(tempTime);
+                    //최소 3초의 여유 ㅎ
+                    Thread.sleep(3000);
+                    Log.d("tag","Time to work!");
+                    //예토전생
+                    wt.run();
+                }catch(InterruptedException e){
+                    Log.d("tag","Interrupt 발생!");
+                    Bundle solveMe = new Bundle();
+                    solveMe.putString("main","두유노우 인터럽트?");
+                    solveMe.putString("sub1","내가 운영체제때 배웠는데 말야");
+                    solveMe.putString("sub2","이걸 안드로이드 하면서 볼 줄은 몰랐어");
+                    Message msg = new Message();
+                    msg.setData(solveMe);
+                    handler.sendMessage(msg);
+                }catch(IllegalThreadStateException e){
+                    Log.d("tag",e.toString());
+                    Bundle solveMe = new Bundle();
+                    solveMe.putString("main","스레드의 state가 이상하다는거는");
+                    solveMe.putString("sub1","아직 살아있는 스레드를 다시 start() 할때 발생되지");
+                    solveMe.putString("sub2","고거는 처리를 했는데, 어떻게 이 메시지가 뜨게되는지는 모르겠네");
+                    Message msg = new Message();
+                    msg.setData(solveMe);
+                    handler.sendMessage(msg);
+                }
+            }
+        }
+    }
+
+    //예전에 있던 웹파싱 버튼을 클릭햇을때랑 똑같음.
+    public class webParsingThread extends Thread{
+        public void run(){
+            Log.d("tag","WebParsingThread run");
+            JsoupAsyncTask jsoupAsyncTask = new JsoupAsyncTask();
+            jsoupAsyncTask.execute();
+        }
     }
 
     private class JsoupAsyncTask extends AsyncTask<Void,Void,Void>{
@@ -159,19 +217,17 @@ public class MainActivity extends AppCompatActivity {
                 //전처리를 하면서, 최저가를 찾습니다.
                 for(Element e: titles){
                     sample=e.text();
-                    if (sample.startsWith("최저")){
-                        int index = sample.indexOf("저");
-                        sample = sample.substring(index+1,sample.length());
-                        index = sample.indexOf("원");
-                        sample = sample.substring(0,index);
-                        sample = sample.replaceAll("\\,","");
-                    }
+                    int index = sample.indexOf("저");
+                    sample = sample.substring(index+1,sample.length());
+                    index = sample.indexOf("원");
+                    sample = sample.substring(0,index);
+                    sample = sample.replaceAll("\\,","");
+                    Log.d("tag",sample);
                     price = Integer.parseInt(sample);
                     if(price<lowPrice){
                         lowPrice=price;
                     }
                 }
-
                 //혹시라도 검색어를 잘못 입력했다면, 잘못 입력된 검색어 말고 보통 어떤 올바른 검색어로 검색하는지 찾습니다.
                 titles = doc.select("div.sp_keyword dd em");
                 modifiedKeyword=titles.text();
@@ -192,11 +248,12 @@ public class MainActivity extends AppCompatActivity {
                 if(modifiedKeyword =="" & lowPrice == 99999999){
                     HTMLContentInStringFormat = "검색어가 잘못 된 것 같네요.";
                 }
-
+                //셰어드프리퍼런스에 최근 유저쿼리(방금 쓴 거) 저-장
+                sharedPreference(userQuery);
             }
             //Log메시지가 주석을 대신합니다.
             catch(NumberFormatException e001){
-                Log.d("tag","이 오류는, 갤러리 뷰에서 가격들의 형식이 일괄적이지 않을때 일어납니다. 누구는 최저99,250원 이렇게 나오고 누구는 그냥 890원 이렇게 나올때지요");
+                Log.d("tag","이 에러는 190525에 처리 되었지만, 혹시나 해서 익셉션을 지우지는 않았습니다.");
                 HTMLContentInStringFormat = "좀 더 구체적인 제품명으로 검색해 주십시오";
                 subItemList1="그 키워드로는";
                 subItemList2="기준이 명확하지가 않습니다";
@@ -230,70 +287,14 @@ public class MainActivity extends AppCompatActivity {
             HTMLContentInStringFormat = "";
             subItemList1="";
             subItemList2="";
-
         }
     }
 
-    //예전에 있던 웹파싱 버튼을 클릭햇을때랑 똑같음.
-    public class webParsingThread extends Thread{
-        public void run(){
-            Log.d("tag","WebParsingThread run");
-            JsoupAsyncTask jsoupAsyncTask = new JsoupAsyncTask();
-            jsoupAsyncTask.execute();
-        }
-    }
-//
-    public class timerThread extends Thread{
-        //초기값 10초
-        int tempTime=10000;
-
-        public void run(){
-            Log.d("tag","timerThread run");
-            //웹파싱 스레드 만들고
-            wt.start();
-            //두고두고 우려먹기, 절대 죽지 않음.
-            while(true) {
-                try {
-                    Log.d("tag","sleeping...");
-                    try {
-                        tempTime = Integer.parseInt(timerSettings.getText().toString());
-                    }catch(NumberFormatException e){
-                        Log.d("tag","누구인가? "+e.toString()+" 이옵니다 폐하");
-                        Bundle solveMe = new Bundle();
-                        solveMe.putString("main","두유노우 형변환?");
-                        solveMe.putString("sub1","이거는 ms단위로 입력을 해야 돼");
-                        solveMe.putString("sub2","\'숫자\'로!");
-                        Message msg = new Message();
-                        msg.setData(solveMe);
-                        handler.sendMessage(msg);
-                    }
-                    Thread.sleep(tempTime);
-                    //최소 3초의 여유 ㅎ
-                    Thread.sleep(3000);
-                    Log.d("tag","Time to work!");
-                    //예토전생
-                    wt.run();
-                }catch(InterruptedException e){
-                    Log.d("tag","Interrupt 발생!");
-                    Bundle solveMe = new Bundle();
-                    solveMe.putString("main","두유노우 인터럽트?");
-                    solveMe.putString("sub1","내가 운영체제때 배웠는데 말야");
-                    solveMe.putString("sub2","이걸 안드로이드 하면서 볼 줄은 몰랐어");
-                    Message msg = new Message();
-                    msg.setData(solveMe);
-                    handler.sendMessage(msg);
-                }catch(IllegalThreadStateException e){
-                    Log.d("tag",e.toString());
-                    Bundle solveMe = new Bundle();
-                    solveMe.putString("main","스레드의 state가 이상하다는거는");
-                    solveMe.putString("sub1","아직 살아있는 스레드를 다시 start() 할때 발생되지");
-                    solveMe.putString("sub2","고거는 처리를 했는데, 어떻게 이 메시지가 뜨게되는지는 모르겠네");
-                    Message msg = new Message();
-                    msg.setData(solveMe);
-                    handler.sendMessage(msg);
-                }
-            }
-        }
+    public void sharedPreference(String query){
+        sh_Pref = getSharedPreferences("Previous query", MODE_PRIVATE);
+        toEdit = sh_Pref.edit();
+        toEdit.putString("storedQuery", query);
+        toEdit.commit();
     }
 
     //이제 핸들러(메인쓰레드)에서 UI를 바꿔줌 - 굳이 그럴필요는 없지만 안전을 위해!
@@ -310,5 +311,19 @@ public class MainActivity extends AppCompatActivity {
             webPasingSubList2.setText(sub2);
             notification(main);
         }
+    }
+
+    public void notification(String main){
+        Log.d("tag","notification() : "+main);
+        Notification.Builder builder = new Notification.Builder(this)
+                .setSmallIcon(R.mipmap.circle4white) // 아이콘 설정하지 않으면 오류남
+                .setDefaults(Notification.DEFAULT_ALL)
+                .setContentTitle("제-목") // 제목 설정
+                .setContentText(main) // 내용 설정
+                .setTicker(main) // 상태바에 표시될 한줄 출력
+                .setAutoCancel(true)
+                .setContentIntent(intent);
+        notificationManager = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+        notificationManager.notify(0, builder.build());
     }
 }
