@@ -26,15 +26,6 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 
-/*
-190521 기릿기릿윤승기릿
-1. 타이머 스레드의 탄생
-2. 웹파싱 스레드의 탄생
-3. 두 스레드의 콤비 탄생
-4. 퇴물이 된 웹파싱 버튼
-5. Firebase 안쓰고 푸시알림
-6. 아이구 아이구 아이구 아이구 좋아라
- */
 
 public class MainActivity extends AppCompatActivity {
 
@@ -166,6 +157,7 @@ public class MainActivity extends AppCompatActivity {
                         sample = sample.substring(0,index);
                         sample = sample.replaceAll("\\,","");
                     }
+
                     price = Integer.parseInt(sample);
                     if(price<lowPrice){
                         lowPrice=price;
