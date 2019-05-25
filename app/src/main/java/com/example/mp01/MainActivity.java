@@ -12,6 +12,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -26,13 +28,6 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
-
-/*
-190525 기릿기릿윤승기릿
-1. SharedPreference 이용, 앱을 껏다 켜도, 폰을 껏다 켜도! 내가 검색한 기록이 고대로 다시 켯을때 반영됩니다.
-2. Web parsing 안정성 개선, 제대로 입력했는데 구체적으로 입력하라는 망언은 하지 않습니다.
-3. 아29 좋아라~
- */
 
 public class MainActivity extends AppCompatActivity {
 
@@ -156,6 +151,13 @@ public class MainActivity extends AppCompatActivity {
             JsoupAsyncTask jsoupAsyncTask = new JsoupAsyncTask();
             jsoupAsyncTask.execute();
         }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        menu.add(0, 0, 0, "Help").setIcon(R.drawable.info).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+
+        return true;
     }
 
     private class JsoupAsyncTask extends AsyncTask<Void,Void,Void>{
